@@ -128,6 +128,52 @@ public:
     return (1 - this->x_.array().tanh().pow(2)).matrix().asDiagonal();
   }
 };
+ 
+/*******************************************************************************
+ Sum
+*******************************************************************************/
+template<int n>
+class SumBase {
+public:
+  using Vector = Eigen::Matrix<NUM, n, 1>;
+
+  NUM forward(const Vector& x) {
+    return x.sum();
+  }
+
+  NUM operator() (const Vector& x) {
+    return forward(x);
+  }
+};
+
+// Non-root specialization
+template<int n, typename Layer = void>
+class Sum : public SumBase<n> {
+public:
+  static constexpr int root_dim = Layer::root_dim;
+  using Jacobian = Eigen::Matrix<NUM, 1, root_dim>;
+
+  Sum(Layer& parent) : parent_(parent) {}
+
+  Jacobian backward() {
+    return Eigen::Matrix<NUM, 1, n>::Ones() * parent_.backward();
+  }
+
+private:
+  Layer& parent_;
+};
+
+// Root specialization
+template<int n>
+class Sum<n, void> : public SumBase<n> {
+public:
+  static constexpr int root_dim = n;
+  using Jacobian = Eigen::Matrix<NUM, 1, root_dim>;
+
+  Jacobian backward() {
+    return Jacobian::Ones();
+  }
+};
 
 /*******************************************************************************
  NN
